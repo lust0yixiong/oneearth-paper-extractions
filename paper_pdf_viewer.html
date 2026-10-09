@@ -35,7 +35,7 @@
     pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdfjs/pdf.worker.mjs', import.meta.url).href;
 
     const file = new URLSearchParams(location.search).get('file') || '';
-    const permitted = /^(?:acp-21-10413-2021\.pdf|paper_pdfs\/\d+\.pdf)$/;
+    const permitted = /^(?:acp-21-10413-2021\.pdf|paper_pdfs\/(?:\d+|[a-f0-9]{10})\.pdf)$/;
     const stage = document.getElementById('stage');
     const canvas = document.getElementById('paper');
     const status = document.getElementById('status');

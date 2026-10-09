@@ -9,9 +9,12 @@
   const jsonInput = document.getElementById('json-file');
   const tokenInput = document.getElementById('github-token');
   const preview = document.getElementById('preview');
+  const matchBox = document.getElementById('pdf-match');
   const status = document.getElementById('status');
   const publish = document.getElementById('publish');
   let selectedPaper = null;
+  let selectedPdfUrl = null;
+  let matchingPromise = Promise.resolve();
 
   function setStatus(message, kind = '') {
     status.className = `status ${kind}`;
@@ -66,12 +69,123 @@
     preview.append(heading, meta);
   }
 
+  function titleSimilarity(left, right) {
+    const words = text => new Set(String(text || '').normalize('NFKC').toLowerCase().match(/[\p{L}\p{N}]+/gu) || []);
+    const a = words(left), b = words(right);
+    if (!a.size || !b.size) return 0;
+    const common = [...a].filter(word => b.has(word)).length;
+    return common / Math.max(a.size, b.size);
+  }
+
+  function normalizeDoi(value) {
+    return String(value || '').replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').trim().toLowerCase();
+  }
+
+  function setMatchMessage(message) {
+    matchBox.hidden = false;
+    matchBox.replaceChildren();
+    const heading = document.createElement('strong');
+    heading.textContent = '在线匹配英文原文';
+    const note = document.createElement('p');
+    note.textContent = message;
+    matchBox.append(heading, note);
+  }
+
+  async function matchOpenPdf(paper) {
+    selectedPdfUrl = null;
+    setMatchMessage('正在检索开放获取的论文版本…');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      let work;
+      if (paper.doi !== '未提供 DOI') {
+        const response = await fetch(`https://api.openalex.org/works/doi:${encodeURIComponent(paper.doi)}`, {signal: controller.signal});
+        if (response.status === 404) {
+          setMatchMessage('未在 OpenAlex 找到该 DOI。可以继续上传 JSON，或手动附上 PDF。');
+          return;
+        }
+        if (!response.ok) throw new Error(`OpenAlex 查询失败（HTTP ${response.status}）`);
+        work = await response.json();
+        if (normalizeDoi(work.doi) !== normalizeDoi(paper.doi)) throw new Error('检索结果 DOI 不一致');
+      } else {
+        const response = await fetch(`https://api.openalex.org/works?search=${encodeURIComponent(paper.data.paper_identity.title)}&per_page=5`, {signal: controller.signal});
+        if (!response.ok) throw new Error(`OpenAlex 查询失败（HTTP ${response.status}）`);
+        const results = (await response.json()).results || [];
+        work = results.sort((a, b) => titleSimilarity(b.display_name, paper.data.paper_identity.title) - titleSimilarity(a.display_name, paper.data.paper_identity.title))[0];
+      }
+      if (selectedPaper !== paper) return;
+      if (!work || titleSimilarity(work.display_name, paper.data.paper_identity.title) < .7) {
+        setMatchMessage('检索到的标题与 JSON 不够一致；请手动核对并上传 PDF。');
+        return;
+      }
+      const publisherPdf = normalizeDoi(work.doi).match(/^10\.5194\/([a-z]+)-(\d+)-(\d+)-(\d{4})$/);
+      const publisherLocation = publisherPdf && work.best_oa_location?.is_oa ? [{
+        is_oa: true,
+        pdf_url: `https://${publisherPdf[1]}.copernicus.org/articles/${publisherPdf[2]}/${publisherPdf[3]}/${publisherPdf[4]}/${publisherPdf[1]}-${publisherPdf[2]}-${publisherPdf[3]}-${publisherPdf[4]}.pdf`,
+        version: 'publishedVersion',
+        source: {display_name: 'Copernicus Publications'}
+      }] : [];
+      const candidates = [...publisherLocation, work.best_oa_location, work.primary_location, ...(work.locations || [])]
+        .filter(item => item?.is_oa && /^https:\/\//i.test(item.pdf_url || ''))
+        .sort((a, b) => (a.version === 'publishedVersion' ? 0 : a.version === 'acceptedVersion' ? 1 : 2) - (b.version === 'publishedVersion' ? 0 : b.version === 'acceptedVersion' ? 1 : 2));
+      const unique = [...new Map(candidates.map(item => [item.pdf_url, item])).values()].slice(0, 3);
+      if (!unique.length) {
+        setMatchMessage('已核对论文标题和 DOI，但未找到可直接使用的开放 PDF 链接。可以手动附上 PDF。');
+        return;
+      }
+      matchBox.hidden = false;
+      matchBox.replaceChildren();
+      const heading = document.createElement('strong');
+      heading.textContent = '找到开放获取的原文候选';
+      const note = document.createElement('p');
+      note.textContent = `已匹配：${work.display_name}。选择一个来源；若链接不能在页内打开，可在来源网站查看。`;
+      matchBox.append(heading, note);
+      unique.forEach((item, index) => {
+        const row = document.createElement('label');
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'matched-pdf';
+        radio.value = item.pdf_url;
+        radio.checked = index === 0;
+        radio.addEventListener('change', () => { if (radio.checked) selectedPdfUrl = item.pdf_url; });
+        const label = document.createElement('span');
+        const version = item.version === 'publishedVersion' ? '正式发表版' : item.version === 'acceptedVersion' ? '录用稿' : '预印本';
+        label.textContent = `${item.source?.display_name || '开放获取来源'} · ${version}`;
+        const link = document.createElement('a');
+        link.href = item.pdf_url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = '核对 PDF ↗';
+        row.append(radio, label, ' · ', link);
+        matchBox.append(row);
+      });
+      const none = document.createElement('label');
+      none.className = 'none';
+      const noRadio = document.createElement('input');
+      noRadio.type = 'radio';
+      noRadio.name = 'matched-pdf';
+      noRadio.value = '';
+      noRadio.addEventListener('change', () => { if (noRadio.checked) selectedPdfUrl = null; });
+      none.append(noRadio, '暂不使用在线来源');
+      matchBox.append(none);
+      selectedPdfUrl = unique[0].pdf_url;
+    } catch (error) {
+      if (selectedPaper === paper) setMatchMessage(`${error.message || '查询失败'}。仍可继续发布 JSON。`);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   jsonInput.addEventListener('change', async () => {
     selectedPaper = null;
+    selectedPdfUrl = null;
+    matchingPromise = Promise.resolve();
+    matchBox.hidden = true;
     setStatus('');
     try {
       selectedPaper = await parsePaper(jsonInput.files[0]);
       showPreview(selectedPaper);
+      matchingPromise = matchOpenPdf(selectedPaper);
     } catch (error) {
       preview.className = 'preview error';
       preview.textContent = error.message;
@@ -149,6 +263,7 @@
       const paper = selectedPaper && selectedPaper.file === jsonInput.files[0]
         ? selectedPaper : await parsePaper(jsonInput.files[0]);
       if (!token) throw new Error('请输入 GitHub 令牌。');
+      await matchingPromise;
       const pdfFile = await readOptionalFile('pdf-file', '.pdf', 30 * 1024 * 1024);
       const zhFile = await readOptionalFile('zh-file', '.html', 10 * 1024 * 1024);
 
@@ -169,7 +284,7 @@
 
       const category = document.getElementById('category').value.trim() || (old && old.category) || '新增论文';
       const zhTitle = document.getElementById('zh-title').value.trim() || (old && old.zhTitle) || title;
-      const pdfPath = pdfFile ? `paper_pdfs/${paper.id}.pdf` : (old && old.pdf) || null;
+      const pdfPath = pdfFile ? `paper_pdfs/${paper.id}.pdf` : selectedPdfUrl || (old && old.pdf) || null;
       const zhPath = zhFile ? `paper_translations/${paper.id}.html` : (old && old.zh) || null;
       const record = {
         id: paper.id, category,

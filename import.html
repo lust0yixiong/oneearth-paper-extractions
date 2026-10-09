@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com https://api.openalex.org; base-uri 'none'; form-action 'none'">
   <title>在线导入论文 · 论文抽取浏览</title>
   <link rel="stylesheet" href="scripts/online_import.css">
 </head>
@@ -25,6 +25,8 @@
         <label>中文译文 HTML <span class="optional">选填</span><input id="zh-file" type="file" accept=".html,.htm,text/html"></label>
       </div>
       <div id="preview" class="preview" aria-live="polite">选择 JSON 后，这里会显示论文信息。</div>
+      <p class="lookup-note">选择 JSON 后会将论文 DOI 或标题发送给 OpenAlex 检索开放获取原文；不会发送 JSON 全文。</p>
+      <div id="pdf-match" class="match" aria-live="polite" hidden></div>
 
       <h2>2 · 补充列表信息</h2>
       <div class="fields two">

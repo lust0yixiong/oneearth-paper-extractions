@@ -7,14 +7,22 @@
   const decoder = new TextDecoder();
   const form = document.getElementById('import-form');
   const jsonInput = document.getElementById('json-file');
-  const tokenInput = document.getElementById('github-token');
   const preview = document.getElementById('preview');
   const matchBox = document.getElementById('pdf-match');
   const status = document.getElementById('status');
+  const guide = document.getElementById('publish-guide');
   const publish = document.getElementById('publish');
   let selectedPaper = null;
   let selectedPdfUrl = null;
   let matchingPromise = Promise.resolve();
+  let downloadUrl = null;
+
+  function clearDownload() {
+    if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    downloadUrl = null;
+    guide.hidden = true;
+    guide.replaceChildren();
+  }
 
   function setStatus(message, kind = '') {
     status.className = `status ${kind}`;
@@ -177,6 +185,7 @@
   }
 
   jsonInput.addEventListener('change', async () => {
+    clearDownload();
     selectedPaper = null;
     selectedPdfUrl = null;
     matchingPromise = Promise.resolve();
@@ -192,15 +201,18 @@
     }
   });
 
-  async function api(path, token, options = {}) {
+  form.addEventListener('change', event => {
+    if (event.target !== jsonInput && downloadUrl) clearDownload();
+  });
+  for (const id of ['category', 'zh-title']) {
+    document.getElementById(id).addEventListener('input', () => {
+      if (downloadUrl) clearDownload();
+    });
+  }
+
+  async function api(path) {
     const response = await fetch(`${BASE}${path}`, {
-      ...options,
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...(options.body ? {'Content-Type': 'application/json'} : {})
-      },
+      headers: {Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'},
       cache: 'no-store'
     });
     let body;
@@ -208,7 +220,7 @@
     catch { throw new Error(`GitHub 返回了无法识别的响应（HTTP ${response.status}）。`); }
     if (!response.ok) {
       const detail = Array.isArray(body.errors) ? body.errors.map(item => item.message || item.code).filter(Boolean).join('；') : '';
-      throw new Error(`GitHub 请求失败（HTTP ${response.status}）：${body.message || detail || '请检查令牌权限与网络连接。'}`);
+      throw new Error(`读取仓库失败（HTTP ${response.status}）：${body.message || detail || '请稍后重试。'}`);
     }
     return body;
   }
@@ -217,14 +229,6 @@
     if (response.encoding !== 'base64' || !response.content) throw new Error('无法读取仓库文件。');
     const binary = atob(response.content.replace(/\s/g, ''));
     return decoder.decode(Uint8Array.from(binary, char => char.charCodeAt(0)));
-  }
-
-  function base64(bytes) {
-    let binary = '';
-    for (let pos = 0; pos < bytes.length; pos += 32768) {
-      binary += String.fromCharCode(...bytes.subarray(pos, pos + 32768));
-    }
-    return btoa(binary);
   }
 
   async function readOptionalFile(inputId, extension, maxBytes) {
@@ -241,38 +245,24 @@
     return file;
   }
 
-  async function waitForPublicPage(id, sha) {
-    const url = `paper_library_manifest.json?rev=${encodeURIComponent(sha)}`;
-    for (let attempt = 0; attempt < 24; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      try {
-        const response = await fetch(`${url}&t=${Date.now()}`, {cache: 'no-store'});
-        if (response.ok && (await response.json()).some(item => item.id === id)) return true;
-      } catch { /* GitHub Pages may still be rebuilding. */ }
-    }
-    return false;
-  }
-
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    let token = tokenInput.value.trim();
-    tokenInput.value = '';
     publish.disabled = true;
+    clearDownload();
     setStatus('正在检查文件…');
     try {
       const paper = selectedPaper && selectedPaper.file === jsonInput.files[0]
         ? selectedPaper : await parsePaper(jsonInput.files[0]);
-      if (!token) throw new Error('请输入 GitHub 令牌。');
       await matchingPromise;
-      const pdfFile = await readOptionalFile('pdf-file', '.pdf', 30 * 1024 * 1024);
+      const pdfFile = await readOptionalFile('pdf-file', '.pdf', 25 * 1024 * 1024);
       const zhFile = await readOptionalFile('zh-file', '.html', 10 * 1024 * 1024);
 
       setStatus('正在读取 GitHub 网站的最新版本…');
-      const ref = await api('/git/ref/heads/main', token);
+      const ref = await api('/git/ref/heads/main');
       const head = ref.object.sha;
       const paths = ['index.html', 'paper_library_manifest.json', 'scripts/case_template.html'];
       const contents = await Promise.all(paths.map(async path => decodeGitHubFile(
-        await api(`/contents/${path}?ref=${head}`, token)
+        await api(`/contents/${path}?ref=${head}`)
       )));
       const [indexSource, manifestSource, template] = contents;
       const papers = JSON.parse(manifestSource);
@@ -317,40 +307,40 @@
       if (pdfFile) additions.push({path: pdfPath, bytes: new Uint8Array(await pdfFile.arrayBuffer())});
       if (zhFile) additions.push({path: zhPath, bytes: new Uint8Array(await zhFile.arrayBuffer())});
 
-      const commit = await api(`/git/commits/${head}`, token);
-      const treeItems = [];
-      for (let i = 0; i < additions.length; i++) {
-        setStatus(`正在上传文件 ${i + 1} / ${additions.length}…`);
-        const item = additions[i];
-        const blob = await api('/git/blobs', token, {
-          method: 'POST', body: JSON.stringify({content: base64(item.bytes), encoding: 'base64'})
-        });
-        treeItems.push({path: item.path, mode: '100644', type: 'blob', sha: blob.sha});
-      }
-      setStatus('正在提交网站更新…');
-      const tree = await api('/git/trees', token, {
-        method: 'POST', body: JSON.stringify({base_tree: commit.tree.sha, tree: treeItems})
-      });
-      const next = await api('/git/commits', token, {
-        method: 'POST', body: JSON.stringify({message: `Import paper ${paper.id}`, tree: tree.sha, parents: [head]})
-      });
-      await api('/git/refs/heads/main', token, {
-        method: 'PATCH', body: JSON.stringify({sha: next.sha, force: false})
-      });
-      token = '';
-      setStatus('GitHub 已接收论文，正在等待公开网站更新…');
-      const live = old ? false : await waitForPublicPage(paper.id, next.sha);
-      status.className = 'status success';
-      status.replaceChildren();
-      status.append(document.createTextNode(live ? '发布完成。' : '已提交到 GitHub；网站可能还在更新。'));
+      setStatus('正在生成发布文件…');
+      const zip = window.makePaperImportZip(additions);
+      const download = URL.createObjectURL(zip);
+      downloadUrl = download;
+      const name = `paper-import-${paper.id}.zip`;
       const link = document.createElement('a');
-      link.href = `index.html#paper=${encodeURIComponent(paper.id)}&view=extraction`;
-      link.textContent = '查看这篇论文';
-      status.append(' ', link);
+      link.href = download;
+      link.download = name;
+      link.textContent = `下载 ${name}`;
+      setStatus('发布文件已生成。下载后，在 GitHub 登录并提交。', 'success');
+      guide.hidden = false;
+      const guideTitle = document.createElement('strong');
+      guideTitle.textContent = `发布包：${name}`;
+      const steps = document.createElement('ol');
+      for (const step of [
+        '点击下方“下载发布包”，再解压 ZIP 文件。',
+        '点击下方链接，按需登录 GitHub。',
+        '把解压后文件夹内的全部文件和文件夹拖入 GitHub 上传区，确认提交。'
+      ]) {
+        const item = document.createElement('li');
+        item.textContent = step;
+        steps.append(item);
+      }
+      const upload = document.createElement('a');
+      upload.href = 'https://github.com/lust0yixiong/oneearth-paper-extractions/upload/main';
+      upload.target = '_blank';
+      upload.rel = 'noopener noreferrer';
+      upload.textContent = '登录 GitHub 并上传发布文件 ↗';
+      const note = document.createElement('small');
+      note.textContent = '只有拥有仓库写入权限的账号可以提交；提交后等待 GitHub Pages 更新。若期间有人更新论文列表，请重新生成发布包。';
+      guide.append(guideTitle, steps, link, ' · ', upload, note);
     } catch (error) {
       setStatus(error.message || '导入失败，请重试。', 'error');
     } finally {
-      token = '';
       publish.disabled = false;
     }
   });

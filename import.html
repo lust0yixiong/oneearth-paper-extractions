@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com https://api.openalex.org; base-uri 'none'; form-action 'none'">
   <title>在线导入论文 · 论文抽取浏览</title>
-  <link rel="stylesheet" href="scripts/online_import.css?v=2">
+  <link rel="stylesheet" href="scripts/online_import.css?v=4">
 </head>
 <body>
   <header class="topbar"><a href="index.html" class="back">← 返回论文列表</a><strong>在线导入论文</strong></header>
@@ -13,7 +13,7 @@
     <section class="intro">
       <div class="eyebrow">Paper extraction library</div>
       <h1>把新论文加入网站</h1>
-      <p>选择抽取 JSON，可同时加入英文原文 PDF 和中文译文 HTML。检查信息后点击发布，论文会出现在左侧列表。</p>
+      <p>选择抽取 JSON，可同时加入英文原文 PDF 和中文译文 HTML。核对后生成发布文件，再用 GitHub 登录提交到网站。</p>
       <div class="note">这是公开网站。发布后，所选文件及其中的数据可被任何人访问。</div>
     </section>
 
@@ -34,14 +34,14 @@
         <label>中文标题<input id="zh-title" type="text" maxlength="300" placeholder="可留空，列表将显示英文标题"></label>
       </div>
 
-      <h2>3 · 授权发布</h2>
-      <p class="help">用 GitHub 的精细权限令牌授权本次发布。令牌需限定到 <strong>lust0yixiong/oneearth-paper-extractions</strong> 仓库，并授予 <strong>Contents: Read and write</strong>。<a href="https://github.com/settings/personal-access-tokens/new?name=OneEarth%20Paper%20Importer&amp;target_name=lust0yixiong&amp;contents=write" target="_blank" rel="noopener noreferrer">创建令牌</a></p>
-      <label>GitHub 令牌<input id="github-token" type="password" inputmode="text" autocomplete="off" spellcheck="false" placeholder="粘贴本次使用的令牌" required></label>
-      <p class="privacy">令牌只在浏览器内用于直接请求 GitHub API；本页不会保存令牌，也不会把它写入网站文件。</p>
-      <button id="publish" type="submit">发布到公开网站</button>
+      <h2>3 · 生成并发布</h2>
+      <p class="help">准备文件无需登录或填写令牌。确认后下载发布包；只有最后在 GitHub 提交时才需要登录具有仓库写入权限的账号。</p>
+      <button id="publish" type="submit">生成发布文件</button>
       <div id="status" class="status" role="status" aria-live="polite"></div>
+      <div id="publish-guide" class="publish-guide" hidden></div>
     </form>
   </main>
-  <script src="scripts/online_import.js?v=3" defer></script>
+  <script src="scripts/zip_store.js?v=1" defer></script>
+  <script src="scripts/online_import.js?v=4" defer></script>
 </body>
 </html>

@@ -6,7 +6,7 @@
 
 ## 在线导入
 
-打开网站右上角的 **＋ 导入论文**，或直接访问[在线导入页](https://lust0yixiong.github.io/oneearth-paper-extractions/import.html)。选择 JSON 后，网站按 DOI 和标题在 OpenAlex 查找开放获取的 PDF 来源，并列出论文版本供核对。选定来源后，英文原文入口会在站内显示该来源，并提供直达链接；若来源限制嵌入，可从来源链接打开。也可直接上传英文原文 PDF 与已有的中文译文 HTML。中文全文自动翻译尚未加入。
+打开网站右上角的 **＋ 导入论文**，或直接访问[在线导入页](https://lust0yixiong.github.io/oneearth-paper-extractions/import.html)。选择 JSON 后，网站按 DOI 和标题在 OpenAlex 查找开放获取的 PDF 来源，并列出论文版本供核对。选定来源后，英文原文入口会保留该来源链接；如来源限制嵌入，可在当前页面或浏览器卡片中打开。若需要稳定的页内 PDF 阅读，请直接附上 PDF 文件。也可附上已有的中文译文 HTML。中文全文自动翻译尚未加入。
 
 在线发布需要拥有本仓库写入权限的 GitHub 账号，以及限定到本仓库、授予 **Contents: Read and write** 权限的精细权限令牌。页面会在浏览器中用该令牌直接调用 GitHub API，一次提交全部文件；不会把令牌存储到网站文件或浏览器存储中。令牌请勿分享给他人。提交后等待 GitHub Pages 更新，再打开论文链接。
 

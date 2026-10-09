@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src https:; base-uri 'none'">
   <title>英文原文 · 开放获取来源</title>
-  <link rel="stylesheet" href="scripts/external_pdf.css">
+  <link rel="stylesheet" href="scripts/external_pdf.css?v=2">
 </head>
 <body>
-  <header><strong>英文原文 · 开放获取来源</strong><a id="source" target="_blank" rel="noopener noreferrer">在来源网站查看 PDF ↗</a></header>
-  <p>原文来自论文的开放获取来源。如果下方无法显示，请使用右上角的来源链接。</p>
-  <iframe id="original" title="开放获取英文原文 PDF" sandbox="allow-scripts allow-same-origin allow-downloads"></iframe>
-  <script src="scripts/external_pdf.js" defer></script>
+  <header><strong>英文原文 · 开放获取来源</strong><button id="back" type="button" hidden>返回说明</button><a id="source" target="_parent" rel="noopener noreferrer">在当前页面打开 PDF ↗</a></header>
+  <main id="notice"><div class="card"><div class="eyebrow">OPEN ACCESS SOURCE</div><h1>已匹配到英文原文</h1><p>此 PDF 由论文的开放获取来源提供。当前浏览器可能限制外部 PDF 的页内预览；可以先尝试预览，或直接在当前页面打开原文。</p><div class="actions"><button id="preview" type="button">尝试页内预览</button><a id="open-source" target="_parent" rel="noopener noreferrer">在当前页面打开 PDF ↗</a></div><small>若仍无法显示，可<a id="open-browser" target="_top" rel="noopener noreferrer">在当前浏览器卡片中整页打开来源</a>。</small></div></main>
+  <iframe id="original" title="开放获取英文原文 PDF" sandbox="allow-scripts allow-same-origin allow-downloads" hidden></iframe>
+  <script src="scripts/external_pdf.js?v=2" defer></script>
 </body>
 </html>

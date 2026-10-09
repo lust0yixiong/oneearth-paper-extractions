@@ -126,7 +126,7 @@
         source: {display_name: 'Copernicus Publications'}
       }] : [];
       const candidates = [...publisherLocation, work.best_oa_location, work.primary_location, ...(work.locations || [])]
-        .filter(item => item?.is_oa && /^https:\/\//i.test(item.pdf_url || ''))
+        .filter(item => item?.is_oa && /^https:\/\//i.test(item.pdf_url || '') && !/^https:\/\/(?:dx\.)?doi\.org\//i.test(item.pdf_url))
         .sort((a, b) => (a.version === 'publishedVersion' ? 0 : a.version === 'acceptedVersion' ? 1 : 2) - (b.version === 'publishedVersion' ? 0 : b.version === 'acceptedVersion' ? 1 : 2));
       const unique = [...new Map(candidates.map(item => [item.pdf_url, item])).values()].slice(0, 3);
       if (!unique.length) {

@@ -4,6 +4,14 @@
 
 公开访问：[论文抽取浏览网站](https://lust0yixiong.github.io/oneearth-paper-extractions/)
 
+## 在线导入
+
+打开网站右上角的 **＋ 导入论文**，或直接访问[在线导入页](https://lust0yixiong.github.io/oneearth-paper-extractions/import.html)。选择 JSON，可同时选择英文原文 PDF 与已有的中文译文 HTML，核对预览信息后发布。网站不会自动翻译新论文。
+
+在线发布需要拥有本仓库写入权限的 GitHub 账号，以及限定到本仓库、授予 **Contents: Read and write** 权限的精细权限令牌。页面会在浏览器中用该令牌直接调用 GitHub API，一次提交全部文件；不会把令牌存储到网站文件或浏览器存储中。令牌请勿分享给他人。提交后等待 GitHub Pages 更新，再打开论文链接。
+
+较大的文件或不便使用令牌时，可使用下方本地导入方式。
+
 ## 快速导入新论文
 
 在本仓库目录打开终端，把命令中的路径换成新 JSON 的实际路径：

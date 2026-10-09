@@ -8,5 +8,6 @@
 - `paper_pdfs/` 与根目录的 `acp-21-10413-2021.pdf`：英文原文 PDF。
 - `paper_translations/` 与根目录的 `paper_2906_zh.html`：中文阅读版。
 - `paper_figures/`：现有北极气溶胶论文中文阅读版所用图表。
+- `paper_pdf_viewer.html` 与 `vendor/pdfjs/`：公开网站的页内 PDF 阅读器，使用 Mozilla PDF.js（Apache 2.0）。
 
 中文译文为机器初译。专业术语、数值、图表和公式应以英文原文为准。论文著作权属于原作者和出版方；请通过页面所列 DOI 查阅原始出版信息与授权条款。

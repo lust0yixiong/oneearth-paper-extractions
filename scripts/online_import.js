@@ -316,15 +316,15 @@
       link.href = download;
       link.download = name;
       link.textContent = `下载 ${name}`;
-      setStatus('发布文件已生成。下载后，在 GitHub 登录并提交。', 'success');
+      setStatus('发布文件已生成。下载后，用自己的 GitHub 账号提交。', 'success');
       guide.hidden = false;
       const guideTitle = document.createElement('strong');
       guideTitle.textContent = `发布包：${name}`;
       const steps = document.createElement('ol');
       for (const step of [
         '点击下方“下载发布包”，再解压 ZIP 文件。',
-        '点击下方链接，按需登录 GitHub。',
-        '把解压后文件夹内的全部文件和文件夹拖入 GitHub 上传区，确认提交。'
+        '在 GitHub 登录后，根据是否有仓库写入权限选择下方入口。',
+        '把解压后文件夹内的全部文件和文件夹拖入 GitHub 上传区，保持目录结构。'
       ]) {
         const item = document.createElement('li');
         item.textContent = step;
@@ -334,10 +334,15 @@
       upload.href = 'https://github.com/lust0yixiong/oneearth-paper-extractions/upload/main';
       upload.target = '_blank';
       upload.rel = 'noopener noreferrer';
-      upload.textContent = '登录 GitHub 并上传发布文件 ↗';
+      upload.textContent = '有写入权限：直接上传 ↗';
+      const fork = document.createElement('a');
+      fork.href = 'https://github.com/lust0yixiong/oneearth-paper-extractions/fork';
+      fork.target = '_blank';
+      fork.rel = 'noopener noreferrer';
+      fork.textContent = '无写入权限：Fork 后提交 PR ↗';
       const note = document.createElement('small');
-      note.textContent = '只有拥有仓库写入权限的账号可以提交；提交后等待 GitHub Pages 更新。若期间有人更新论文列表，请重新生成发布包。';
-      guide.append(guideTitle, steps, link, ' · ', upload, note);
+      note.textContent = '没有写入权限时，先 Fork 仓库，在自己的仓库点击 Add file → Upload files 上传，再向原仓库发起 Pull request；维护者合并后论文才会上线。若期间有人更新论文列表，请重新生成发布包。';
+      guide.append(guideTitle, steps, link, ' · ', upload, ' · ', fork, note);
     } catch (error) {
       setStatus(error.message || '导入失败，请重试。', 'error');
     } finally {
